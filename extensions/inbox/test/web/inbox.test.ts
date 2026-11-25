@@ -56,7 +56,10 @@ it('lists the open questions to the user and the provided items, oldest first', 
 })
 
 it('puts urgent items first, oldest first in both groups, and hands off in that order', () => {
-  const pending = ask(8, 800, { urgent: { reason: 'The release is blocked on approval.' } })
+  const pending = ask(8, 800, {
+    questions: [{ text: 'Approve the release?', kind: 'confirm' }],
+    urgent: { reason: 'The release is blocked on approval.' },
+  })
   const provided = [
     [
       item('shell:a', 350),
@@ -81,6 +84,7 @@ it('puts urgent items first, oldest first in both groups, and hands off in that 
     at: 100,
     open: true,
   })
+  expect(shown(entries, { key: 'message:42', at: UNLOADED, open: true })?.key).toBe('shell:urgent')
 })
 
 it('moves on to the next oldest when the shown item is answered', () => {

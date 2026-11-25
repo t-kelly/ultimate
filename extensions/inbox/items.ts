@@ -11,7 +11,7 @@ export const SURFACE = 'inbox'
 export const SELECTED = 'ext.inbox.selected'
 export const WAIT_WARNING_AFTER_MS = 60 * 60_000
 export const amber = 'text-amber-700 dark:text-amber-300'
-export const sky = 'text-sky-700/80 dark:text-sky-300/75'
+export const sky = 'text-sky-700 dark:text-sky-300/75'
 
 export type Anchor = { key: string; at: number; urgent?: true }
 export type Selection = (Anchor & { open: boolean }) | null
@@ -78,11 +78,9 @@ export const countsOf = (entries: readonly Anchor[]): Counts => {
 
 export function shown<T extends Anchor>(entries: readonly T[], selected: Selection): T | undefined {
   if (!selected) return entries[0]
-  return (
-    entries.find((entry) => entry.key === selected.key) ??
-    entries.find((entry) => byListOrder(entry, selected) > 0) ??
-    entries.at(-1)
-  )
+  const exact = entries.find((entry) => entry.key === selected.key)
+  if (exact || selected.at === UNLOADED) return exact ?? entries[0]
+  return entries.find((entry) => byListOrder(entry, selected) > 0) ?? entries.at(-1)
 }
 
 export const UNLOADED = 0
