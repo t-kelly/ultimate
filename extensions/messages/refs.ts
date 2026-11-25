@@ -61,6 +61,8 @@ export type Message = {
   interim?: true
   /** The questions a reply-expected message to the user asks, answered on its card. */
   questions?: Question[]
+  /** Why these questions need the user's prompt attention in the Inbox. */
+  urgent?: { reason: string }
   /** A user answer or dismissal that @ultimate settled for the user, not their own click. */
   via?: Via
   /** How the judge weighed this branch's final answer before it went to the starter. */

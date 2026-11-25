@@ -2,7 +2,7 @@ import { Inbox as InboxIcon } from '@lucide/solid'
 import { createMemo, For, Show } from 'solid-js'
 import { Header, Sidebar, useProvided, useNow, useSurface, useViewport } from '@/sdk/solid'
 import { Badge, LinkOverlay, SidebarRow, Zero } from './chrome.solid.tsx'
-import { SURFACE, answeredToday, toRow } from './items.ts'
+import { SURFACE, anchorOf, answeredToday, countsOf, toRow } from './items.ts'
 import { List } from './list.solid.tsx'
 import { QuestionPane } from './points.ts'
 import { Reading } from './reading.solid.tsx'
@@ -48,7 +48,7 @@ export function Inbox() {
           <Header>
             <span class="flex shrink-0 items-center gap-2 text-[13px] font-medium">
               <InboxIcon class="size-4 text-muted-foreground" />
-              Inbox <Badge count={entries().length} />
+              Inbox <Badge {...countsOf(entries())} />
             </span>
           </Header>
         </Show>
@@ -86,11 +86,7 @@ export function InboxSidebar() {
   const { entries, failures } = Waiting()
   return (
     <>
-      <SidebarRow
-        active={active() === SURFACE}
-        count={entries().length}
-        oldest={entries()[0]?.at}
-      />
+      <SidebarRow active={active() === SURFACE} {...countsOf(entries())} />
       {failures}
     </>
   )
@@ -100,7 +96,7 @@ export function WaitingBadge() {
   const { entries, failures } = Waiting()
   return (
     <>
-      <Badge count={entries().length} />
+      <Badge {...countsOf(entries())} />
       {failures}
     </>
   )
@@ -108,5 +104,5 @@ export function WaitingBadge() {
 
 export function WaitingLink() {
   const { entries } = Waiting()
-  return <LinkOverlay entries={entries()} />
+  return <LinkOverlay entries={entries().map(anchorOf)} />
 }

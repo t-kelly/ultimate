@@ -4,19 +4,17 @@ import { Button } from '@/components/ui/button.solid.tsx'
 import {
   api,
   cn,
-  formatAgo,
   formatTime,
   showSurface,
   switchConversation,
   useEvent,
-  useNow,
   useUiState,
   writingAs,
 } from '@/sdk/solid'
 import { ConversationRef } from '../conversations/ui.solid.tsx'
 import { StandingAction } from '../subagents/refs.ts'
-import { SELECTED, SURFACE, UNLOADED, amber, keyOf } from './items.ts'
-import type { Anchor, Answered, Selection } from './items.ts'
+import { SELECTED, SURFACE, UNLOADED, amber, keyOf, sky } from './items.ts'
+import type { Anchor, Answered, Counts, Selection } from './items.ts'
 
 async function backToUltimate(source: string) {
   const id = await api.action(StandingAction, { name: 'ultimate' })
@@ -74,20 +72,31 @@ export function Zero(props: { today: readonly Answered[] }) {
   )
 }
 
-export function Badge(props: { count: number }) {
+export function Badge(props: Counts) {
   return (
-    <Show when={props.count > 0}>
-      <span class={cn('font-mono text-[11px]', amber)}>{props.count}</span>
+    <Show when={props.urgent > 0 || props.notUrgent > 0}>
+      <span class="inline-flex items-baseline gap-1.5 font-mono text-[11px] tabular-nums">
+        <Show when={props.urgent > 0}>
+          <span class={amber}>
+            {props.urgent}
+            <span class="sr-only"> urgent</span>
+          </span>
+        </Show>
+        <Show when={props.notUrgent > 0}>
+          <span class={sky}>
+            {props.notUrgent}
+            <span class="sr-only"> not urgent</span>
+          </span>
+        </Show>
+      </span>
     </Show>
   )
 }
 
-export function SidebarRow(props: { count: number; oldest?: number; active: boolean }) {
-  const now = useNow(60_000, () => props.count > 0)
+export function SidebarRow(props: Counts & { active: boolean }) {
   return (
     <Button
       aria-current={props.active ? 'true' : undefined}
-      aria-label="Show Inbox"
       class={cn(
         'mx-2 flex w-[calc(100%-1rem)] items-center gap-1.5 py-1.5 pr-2 pl-9 text-left font-normal focus-visible:ring-1 hover:bg-sidebar-accent/50',
         props.active && 'bg-sidebar-accent',
@@ -97,20 +106,13 @@ export function SidebarRow(props: { count: number; oldest?: number; active: bool
       size={null}
       variant={null}
     >
-      <Inbox class={cn('size-3 shrink-0', props.count > 0 ? amber : 'text-muted-foreground')} />
-      <span
-        class={cn(
-          'min-w-0 flex-1 truncate font-mono text-[10.5px]',
-          props.count > 0 ? amber : 'text-foreground/70',
-        )}
-      >
-        Inbox{props.count > 0 ? ` · ${props.count}` : ''}
-      </span>
-      <Show when={props.oldest !== undefined}>
-        <span class="shrink-0 font-mono text-[10px] text-muted-foreground">
-          oldest {formatAgo(props.oldest!, now())}
+      <Inbox class={cn('size-3 shrink-0', props.urgent > 0 ? amber : 'text-muted-foreground')} />
+      <span class="flex min-w-0 flex-1 items-baseline gap-2 truncate font-mono text-[10.5px] text-foreground/70 [&>span]:text-[10.5px]">
+        <span>
+          <span class="sr-only">Show </span>Inbox
         </span>
-      </Show>
+        <Badge urgent={props.urgent} notUrgent={props.notUrgent} />
+      </span>
       <ChevronRight class="size-3 shrink-0 text-muted-foreground/60" />
     </Button>
   )
@@ -120,8 +122,8 @@ export function LinkOverlay(props: { entries: readonly Anchor[] }) {
   const [, setSelected] = useUiState<Selection>(SELECTED, null)
   const open = (key: string | undefined) => {
     if (key !== undefined) {
-      const at = props.entries.find((entry) => entry.key === key)?.at ?? UNLOADED
-      setSelected({ key, at, open: true })
+      const anchor = props.entries.find((entry) => entry.key === key) ?? { key, at: UNLOADED }
+      setSelected({ ...anchor, open: true })
     }
     showSurface(SURFACE)
   }

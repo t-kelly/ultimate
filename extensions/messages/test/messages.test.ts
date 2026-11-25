@@ -615,6 +615,26 @@ it("turns @ultimate's message to the user it owes an answer into that answer and
   expect(view.entries.at(-1)?.kind).toBe('pi.tool-result')
   expect(JSON.stringify(results.at(-1)?.model)).toContain(`Message ${next.id} sent.`)
 })
+it('stores a trimmed urgency reason with questions and refuses urgency without questions', async () => {
+  const f = await fixture()
+  const urgent = { reason: '  The certificate expires today.  ' }
+  const questions = [{ text: 'Renew the certificate?', kind: 'confirm' }]
+  await f.send('user', 'Certificate renewal', { questions, urgent })
+  await f.send('user', 'Certificate renewal without a question', { urgent })
+
+  const { messages } = (await f.log())!
+  expect(messages).toHaveLength(1)
+  expect(messages[0]).toMatchObject({
+    to: 'user',
+    reply: true,
+    questions,
+    urgent: { reason: 'The certificate expires today.' },
+  })
+  const view = await f.opened.root.context(context)
+  const results = view.entries.filter((e) => e.kind === 'pi.tool-result')
+  expect(JSON.stringify(results.at(-1)?.model)).toContain('urgent requires questions')
+})
+
 // omarchy-config #42: the user's card reply was still queued behind the run, and the questions were refused.
 it("never lets the user's queued reply block @ultimate's message to them", async () => {
   const f = await fixture()

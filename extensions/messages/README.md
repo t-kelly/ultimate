@@ -4,7 +4,7 @@ Durable messages between conversations, standing agents and the user. Built in a
 
 ## Messaging
 
-`message { to, text, reply?: true, steer?, images?, questions? }` returns the message id at once. Address a
+`message { to, text, reply?: true, steer?, images?, questions?, urgent? }` returns the message id at once. Address a
 conversation as `#123` or `123`, a standing agent as `@name`, or `user`.
 
 - **Who may message whom.** Any conversation except a subagent may message `user`; a message to the user ends the run
@@ -89,6 +89,10 @@ started it (@ultimate when a coordinator, a side chat or no standing agent start
 [Questions](../questions/README.md). While a sender has questions open, its next input is preceded by a `board.open`
 line listing them; @ultimate's lists every open question to the user and names `settle`.
 
+`urgent: { reason }` puts those questions in the Inbox's **Urgent & important** group and shows the reason there.
+Use it for a deadline today, someone blocked on the user, an incident, or something irreversible soon. It requires
+`questions` on a reply-expected message to the user and a non-empty reason after trimming. Omit it by default.
+
 `/?conversation=<c>&message=<m>`, such as a notification's link, opens at that question while it is still open, as
 `messages:open {conversation, message}` does; otherwise it opens the conversation.
 
@@ -139,7 +143,7 @@ as `@ultimate@<project> on <machine>` with a globe mark and a violet accent.
 `Messages` (kind `board`, version 1) is exported on `ROOT_CONVERSATION_ID` as `{ messages: Message[]; next: number }`;
 the log keeps the newest 300 items, and transcripts retain delivered inputs. `Message` is in `api.ts`: `from` and `to`
 are a conversation id, `'user'` or `'remote'`; `state` is `sent`, `delivered`, `answered`, `dismissed`, `failed` or
-`stopped`; `re`, `entry`, `answer`, `error`, `via`, `remote`, `report`, `questions` and `call` are optional.
+`stopped`; `re`, `entry`, `answer`, `error`, `via`, `remote`, `report`, `questions`, `urgent` and `call` are optional.
 
 - `board.message` data: `{ id, from, text, reply, delivery: 'steer' | 'followUp' | 'note', images?, remote?, judged? }`.
 - `board.reply` data: `{ id, re, from, text, failed, stopped?, images?, remote?, interim? }`; `stopped` also sets

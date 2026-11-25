@@ -11,13 +11,15 @@ export const SURFACE = 'inbox'
 export const SELECTED = 'ext.inbox.selected'
 export const WAIT_WARNING_AFTER_MS = 60 * 60_000
 export const amber = 'text-amber-700 dark:text-amber-300'
+export const sky = 'text-sky-700/80 dark:text-sky-300/75'
 
-export type Anchor = { key: string; at: number }
+export type Anchor = { key: string; at: number; urgent?: true }
 export type Selection = (Anchor & { open: boolean }) | null
-export type Entry = Anchor &
+type WaitingItem = Anchor & { reason?: string }
+export type Entry = WaitingItem &
   ({ message: Message; item?: undefined } | { item: InboxItem; message?: undefined })
 type Sender = { conversation?: ConversationId; from?: string }
-export type Row = Anchor &
+export type Row = WaitingItem &
   Sender & {
     tag: string
     title: string
@@ -46,18 +48,39 @@ export const inboxItems = (
       .map((message) => ({
         key: messageKey(message.id),
         at: message.at,
+        ...urgency(message.urgent),
         message,
       })),
-    ...provided.flat().map((item) => ({ key: item.key, at: item.at, item })),
-  ].toSorted(byAge)
+    ...provided
+      .flat()
+      .map((item) => ({ key: item.key, at: item.at, ...urgency(item.urgent), item })),
+  ].toSorted(byListOrder)
 
-const byAge = (a: Anchor, b: Anchor) => a.at - b.at || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
+function urgency(urgent: InboxItem['urgent']): { urgent?: true; reason?: string } {
+  const reason = urgent?.reason.trim()
+  return reason ? { urgent: true, reason } : {}
+}
+
+const byListOrder = (a: Anchor, b: Anchor) =>
+  Number(!!b.urgent) - Number(!!a.urgent) ||
+  a.at - b.at ||
+  (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
+
+export const anchorOf = ({ key, at, urgent }: Anchor): Anchor =>
+  urgent ? { key, at, urgent } : { key, at }
+
+export type Counts = { urgent: number; notUrgent: number }
+
+export const countsOf = (entries: readonly Anchor[]): Counts => {
+  const urgent = entries.filter((entry) => entry.urgent).length
+  return { urgent, notUrgent: entries.length - urgent }
+}
 
 export function shown<T extends Anchor>(entries: readonly T[], selected: Selection): T | undefined {
   if (!selected) return entries[0]
   return (
     entries.find((entry) => entry.key === selected.key) ??
-    entries.find((entry) => byAge(entry, selected) > 0) ??
+    entries.find((entry) => byListOrder(entry, selected) > 0) ??
     entries.at(-1)
   )
 }
@@ -70,11 +93,13 @@ export function selectionAfterChange(
 ): Selection | undefined {
   if (!selected) return undefined
   const entry = entries.find((candidate) => candidate.key === selected.key)
-  if (entry) return entry.at === selected.at ? undefined : { ...selected, at: entry.at }
-  const linkStillLoading = selected.at === UNLOADED
-  if (linkStillLoading) return undefined
+  if (entry)
+    return entry.at === selected.at && entry.urgent === selected.urgent
+      ? undefined
+      : { ...anchorOf(entry), open: selected.open }
+  if (selected.at === UNLOADED) return undefined
   const successor = shown(entries, selected)
-  return successor && { key: successor.key, at: successor.at, open: selected.open }
+  return successor && { ...anchorOf(successor), open: selected.open }
 }
 
 export const previewUrl = (text: string) =>
@@ -123,10 +148,10 @@ export const senderOf = (entry: Entry): Sender =>
   sender(entry.message ? entry.message.from : entry.item.conversation)
 
 export function toRow(entry: Entry): Row {
-  const { key, at, message, item } = entry
+  const { reason, message, item } = entry
   return {
-    key,
-    at,
+    ...anchorOf(entry),
+    reason,
     ...senderOf(entry),
     tag: tagOf(entry),
     title: readerText(message ? lead(message.text).title : item.title),

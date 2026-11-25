@@ -63,6 +63,7 @@ export async function send(
     imagesFrom?: ConversationId
     dismiss?: boolean
     questions?: Question[]
+    urgent?: Message['urgent']
   },
   ctx: Context,
   options: {
@@ -106,6 +107,12 @@ export async function send(
   if (input.questions !== undefined && (input.to !== 'user' || input.reply === false))
     throw new Error('questions go only with a reply-expected message to the user')
   const questions = input.questions === undefined ? undefined : checkQuestions(input.questions)
+  const reason = input.urgent?.reason.trim()
+  if (reason !== undefined) {
+    if (!questions)
+      throw new Error('urgent requires questions in a reply-expected message to the user')
+    if (!reason) throw new Error('urgent.reason must not be empty')
+  }
   if (parent !== undefined && input.to.replace(/^#/, '') !== String(parent))
     throw new Error(
       `Subagents report to the conversation that started them: message only #${parent}. Your final answer reaches it anyway.`,
@@ -210,6 +217,7 @@ export async function send(
       ...(callId === undefined ? {} : { call: callId }),
       ...(images ? { images } : {}),
       ...(questions ? { questions } : {}),
+      ...(reason ? { urgent: { reason } } : {}),
       ...(report ? { report: true as const } : {}),
       ...(options.routed !== undefined ? { routed: options.routed } : {}),
       ...(options.echo ? { echo: true as const } : {}),

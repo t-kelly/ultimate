@@ -88,7 +88,7 @@ export function Reading(props: { entry: Entry; now: number; phone: boolean; onBa
               <time
                 class={cn(
                   'shrink-0 font-mono text-[11px] tabular-nums',
-                  props.now - props.entry.at > WAIT_WARNING_AFTER_MS && amber,
+                  props.entry.urgent && props.now - props.entry.at > WAIT_WARNING_AFTER_MS && amber,
                 )}
                 datetime={time().toISOString()}
                 title={`Asked ${time().toLocaleString()}`}
@@ -97,7 +97,20 @@ export function Reading(props: { entry: Entry; now: number; phone: boolean; onBa
               </time>
             </span>
           </header>
-          <h2 class="mt-3 text-[17px] leading-7 font-semibold tracking-[-0.01em]">
+          <Show when={props.entry.reason}>
+            {(reason) => (
+              <p class={cn('mt-3 text-[13px] leading-5', amber)}>
+                <span class="font-mono text-[11px]">urgent · </span>
+                {reason()}
+              </p>
+            )}
+          </Show>
+          <h2
+            class={cn(
+              'text-[17px] leading-7 font-semibold tracking-[-0.01em]',
+              props.entry.reason ? 'mt-1' : 'mt-3',
+            )}
+          >
             <Markdown text={asOneParagraph(text().title)} without={['img']} />
           </h2>
           <Show when={text().body}>

@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo } from 'solid-js'
+import { For, Show, createEffect, createMemo, createUniqueId } from 'solid-js'
 import { Button } from '@/components/ui/button.solid.tsx'
 import { Kbd } from '@/components/ui/kbd.solid.tsx'
 import {
@@ -11,7 +11,7 @@ import {
   useUiState,
 } from '@/sdk/solid'
 import { ConversationRef } from '../conversations/ui.solid.tsx'
-import { SELECTED, WAIT_WARNING_AFTER_MS, amber, shown } from './items.ts'
+import { SELECTED, WAIT_WARNING_AFTER_MS, amber, anchorOf, shown, sky } from './items.ts'
 import type { Anchor, Row, Selection } from './items.ts'
 
 function InboxRow(props: {
@@ -20,9 +20,11 @@ function InboxRow(props: {
   current: boolean
   select: (row: Anchor) => void
 }) {
+  const reasonId = createUniqueId()
   return (
     <Button
       aria-current={props.current ? 'true' : undefined}
+      aria-describedby={props.row.reason ? reasonId : undefined}
       aria-label={`Read ${props.row.title} (${props.row.message === undefined ? props.row.key : `#${props.row.message}`})`}
       class={cn(
         'flex w-full flex-col items-stretch gap-1 px-3 py-2.5 text-left focus-visible:ring-1 hover:bg-accent/40',
@@ -52,7 +54,9 @@ function InboxRow(props: {
           <time
             class={cn(
               'shrink-0 font-mono text-[11px] tabular-nums',
-              props.now - props.row.at > WAIT_WARNING_AFTER_MS ? amber : 'text-muted-foreground',
+              props.row.urgent && props.now - props.row.at > WAIT_WARNING_AFTER_MS
+                ? amber
+                : 'text-muted-foreground',
             )}
             datetime={new Date(props.row.at).toISOString()}
             title={`Asked ${new Date(props.row.at).toLocaleString()}`}
@@ -62,6 +66,11 @@ function InboxRow(props: {
         </span>
       </span>
       <span class="truncate text-[13px] font-medium text-foreground">{props.row.title}</span>
+      <Show when={props.row.reason}>
+        <span class={cn('truncate text-[12px] font-normal', amber)} id={reasonId}>
+          {props.row.reason}
+        </span>
+      </Show>
       <Show when={props.row.gist}>
         <span class="truncate text-[12px] font-normal text-muted-foreground">
           {props.row.gist}
@@ -75,12 +84,16 @@ function InboxRow(props: {
 }
 
 const keyClass = 'h-4 min-w-4 rounded-[3px] px-1 font-mono text-[10px]'
+const groups = [
+  { label: 'Urgent & important', urgent: true, tone: amber },
+  { label: 'Important, not urgent', urgent: false, tone: sky },
+]
 
 export function List(props: { rows: readonly Row[]; phone: boolean }) {
   const now = useNow(60_000)
   const [selected, setSelected] = useUiState<Selection>(SELECTED, null)
   const current = createMemo(() => shown(props.rows, selected()))
-  const select = ({ key, at }: Anchor) => setSelected({ key, at, open: true })
+  const select = (row: Anchor) => setSelected({ ...anchorOf(row), open: true })
 
   const onKey = (event: KeyboardEvent) => {
     const target = event.target
@@ -126,22 +139,41 @@ export function List(props: { rows: readonly Row[]; phone: boolean }) {
 
   return (
     <div class="flex min-h-0 flex-1 flex-col">
-      <div class="flex items-center justify-between px-5 pt-4 pb-2">
-        <span class="section-label">
-          Waiting on you · <span class={amber}>{props.rows.length}</span>
-        </span>
-        <span class="section-label">oldest first</span>
-      </div>
       <div class="min-h-0 flex-1 overflow-y-auto px-2 pb-4" data-inbox-list>
-        <For each={props.rows} keyed={(row) => row.key}>
-          {(row) => (
-            <InboxRow
-              current={!props.phone && row().key === current()?.key}
-              now={now()}
-              row={row()}
-              select={select}
-            />
-          )}
+        <For each={groups}>
+          {(group) => {
+            const rows = createMemo(() => props.rows.filter((row) => !!row.urgent === group.urgent))
+            const first = () => group.urgent || !props.rows[0]?.urgent
+            return (
+              <Show when={rows().length > 0}>
+                <section aria-label={group.label}>
+                  <h3
+                    class={cn(
+                      'flex items-center justify-between px-3 pb-1.5',
+                      first() ? 'pt-4' : 'pt-5',
+                    )}
+                  >
+                    <span class={cn('section-label', group.tone)}>
+                      {group.label} · {rows().length}
+                    </span>
+                    <Show when={first()}>
+                      <span class="section-label">oldest first</span>
+                    </Show>
+                  </h3>
+                  <For each={rows()} keyed={(row) => row.key}>
+                    {(row) => (
+                      <InboxRow
+                        current={!props.phone && row().key === current()?.key}
+                        now={now()}
+                        row={row()}
+                        select={select}
+                      />
+                    )}
+                  </For>
+                </section>
+              </Show>
+            )
+          }}
         </For>
       </div>
       <Show when={!props.phone}>

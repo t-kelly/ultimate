@@ -6,6 +6,7 @@ import type { Message } from '../messages/refs.ts'
 export type InboxItem = {
   key: string
   at: number
+  urgent?: { reason: string }
   conversation?: ConversationId
   tag: string
   title: string

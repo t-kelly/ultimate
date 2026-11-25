@@ -11,7 +11,7 @@ export default defineWebExtension({
       id: SURFACE,
       title: 'Inbox',
       icon: InboxIcon,
-      description: 'Everything that waits on you, oldest first, answered in place',
+      description: 'Everything that waits on you, urgent first, answered in place',
       order: 10,
       component: Inbox,
       badge: WaitingBadge,

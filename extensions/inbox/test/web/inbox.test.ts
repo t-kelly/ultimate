@@ -55,6 +55,34 @@ it('lists the open questions to the user and the provided items, oldest first', 
   ])
 })
 
+it('puts urgent items first, oldest first in both groups, and hands off in that order', () => {
+  const pending = ask(8, 800, { urgent: { reason: 'The release is blocked on approval.' } })
+  const provided = [
+    [
+      item('shell:a', 350),
+      { ...item('shell:urgent', 750), urgent: { reason: 'The certificate expires today.' } },
+    ],
+  ]
+  const entries = inboxItems([...log, pending], provided)
+  expect(entries.map((entry) => entry.key)).toEqual([
+    'shell:urgent',
+    'message:8',
+    'message:1',
+    'message:3',
+    'shell:a',
+    'message:7',
+  ])
+
+  const selected = { key: 'message:8', at: pending.at, urgent: true as const, open: true }
+  const remaining = inboxItems([...log, { ...pending, state: 'answered' }], provided)
+  expect(shown(remaining, selected)?.key).toBe('message:1')
+  expect(selectionAfterChange(remaining, selected)).toEqual({
+    key: 'message:1',
+    at: 100,
+    open: true,
+  })
+})
+
 it('moves on to the next oldest when the shown item is answered', () => {
   const before = inboxItems(log)
   const selected = { key: 'message:3', at: 300, open: true }

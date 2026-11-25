@@ -361,6 +361,15 @@ export default function messages(host: ExtensionHost) {
           steer: opt(bool()),
           images: opt(imagesParameter),
           questions: opt(questionsParameter),
+          urgent: opt(
+            obj(
+              { reason: str({ minLength: 1 }) },
+              {
+                description:
+                  'Only with questions in a reply-expected message to the user. Give a short reason: a deadline today, someone blocked on the user, an incident, or something irreversible soon. Omit it by default.',
+              },
+            ),
+          ),
         }),
         ...safeToRerun(
           'The task-scoped receipt deduplicates admission; the memo returns the same id on replay.',
