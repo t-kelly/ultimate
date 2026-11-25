@@ -8,6 +8,7 @@ const harness = vi.hoisted(() => ({
   sources: [] as FakeSource[],
   server: undefined as ReturnType<typeof fakeSubscriptions> | undefined,
   restart: vi.fn<(source: string | null) => Response>(),
+  reload: vi.fn<() => void>(),
 }))
 vi.mock('../../../../web/src/sdk/client.ts', async () => {
   const { createStore } = await import('../../../../web/src/sdk/store.ts')
@@ -33,6 +34,7 @@ vi.mock('../../../../web/src/sdk/client.ts', async () => {
     registry: createRegistry(),
     bundle: 'browser-build',
     switched: undefined,
+    reloadUnlessHeld: harness.reload,
   }
 })
 
@@ -41,6 +43,7 @@ import { store } from '../../../../web/src/sdk/client.ts'
 export const approval = { given: true }
 export const agent = createAgent({ allow: (step) => !step.confirm || approval.given })
 export const restart = harness.restart
+export const reload = harness.reload
 harness.server = fakeSubscriptions(harness.sources)
 export const tick = async (ms = 10) => {
   await vi.advanceTimersByTimeAsync(ms)
@@ -49,13 +52,14 @@ export const tick = async (ms = 10) => {
 export function system({
   coreStale = false,
   left,
-}: { coreStale?: boolean; left?: SystemInfo['web']['left'] } = {}) {
+  web = 'browser-build',
+}: { coreStale?: boolean; left?: SystemInfo['web']['left']; web?: string } = {}) {
   const root = '/projects/ultimate'
   const at = '2026-01-01T00:00:00Z'
   harness.sources[0].send('system', {
     code: { ultimateRoot: root, branch: 'main', sha: 'abc1234new', dirty: false, coreStale },
     process: { pid: 100, node: 'v26', startedAt: at, generation: 3, url: 'http://localhost' },
-    web: { id: 'browser-build', changed: [], left },
+    web: { id: web, changed: [], left },
     build: {
       id: 'abc1234new',
       at,
@@ -105,6 +109,7 @@ beforeEach(async () => {
   harness.sources.length = 0
   approval.given = true
   harness.restart.mockReset()
+  harness.reload.mockReset()
   store.start()
   harness.sources[0].open()
   await tick()

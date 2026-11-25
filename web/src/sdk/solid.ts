@@ -11,6 +11,7 @@ export {
   holdReload,
   notify,
   provide,
+  reloadUnlessHeld,
   ROOT,
   switched,
   useAction,

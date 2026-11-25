@@ -11,6 +11,7 @@ import { createTestHook } from './test-hook.ts'
 import { createUiAgent } from './agent.ts'
 import { agentsPage } from './writer.ts'
 import { firstRender } from './resume.ts'
+import { reloadWhenIdle } from './idle-reload.ts'
 import { createUiState, tabWrites } from './ui-state.ts'
 
 const initialUrl = new URL(location.href)
@@ -74,13 +75,22 @@ if (driven)
 export const bundle = document.querySelector<HTMLMetaElement>('meta[name=ultimate-web]')?.content
 
 const reloadNoticeMs = 600
-let switching = false
+const attended = !driven && !navigator.webdriver
+let newBundle: { id: string; at: number; changed: Set<string> } | undefined
 let reloadHolds = 0
 let reloadWaits = false
 
-function reloadUnlessHeld() {
+function switchBundle() {
+  const at = newBundle?.at ?? Date.now()
+  const changed = [...(newBundle?.changed ?? [])]
+  sessionStorage.setItem(switchKey, JSON.stringify({ at, reloaded: Date.now(), changed }))
+  location.reload()
+}
+
+/** Switches to the new bundle now instead of when the person pauses, unless something holds the reload. */
+export function reloadUnlessHeld() {
   if (reloadHolds) reloadWaits = true
-  else location.reload()
+  else switchBundle()
 }
 
 /** Keeps the page from switching to a new bundle until the returned release runs (a recording in progress). */
@@ -91,16 +101,21 @@ export function holdReload() {
     if (released) return
     released = true
     reloadHolds--
-    if (!reloadHolds && reloadWaits) location.reload()
+    if (reloadHolds || !reloadWaits) return
+    reloadWaits = false
+    reloadWhenUnused()
   }
 }
 
+const reloadWhenUnused = () => (attended ? reloadWhenIdle(reloadUnlessHeld) : reloadUnlessHeld())
+
 const switchKey = 'ultimate.web-switch'
-export const switched = ((): { at: number; changed: string[] } | undefined => {
+type Switch = { at: number; reloaded: number; changed: string[] }
+export const switched = ((): Switch | undefined => {
   const stored = sessionStorage.getItem(switchKey)
   sessionStorage.removeItem(switchKey)
-  const value = stored ? (JSON.parse(stored) as { at: number; changed: string[] }) : undefined
-  return value && Date.now() - value.at < 30000 ? value : undefined
+  const value = stored ? (JSON.parse(stored) as Switch) : undefined
+  return value && Date.now() - value.reloaded < 30000 ? value : undefined
 })()
 
 let uiStateServerProcess: string | undefined
@@ -121,15 +136,13 @@ store.subscribe(() => {
   const { shared, ui, system } = store.getState()
   if (system && !registry.getReady().ready) registry.receiveSystem()
 
-  if (system?.web.id && bundle && system.web.id !== bundle) {
-    if (switching) return
-    switching = true
-    sessionStorage.setItem(
-      switchKey,
-      JSON.stringify({ at: Date.now(), changed: system.web.changed }),
-    )
-    deadline(reloadNoticeMs, reloadUnlessHeld)
-    return
+  if (system?.web.id && bundle && system.web.id !== bundle && system.web.id !== newBundle?.id) {
+    if (!newBundle) deadline(reloadNoticeMs, reloadWhenUnused)
+    newBundle = {
+      id: system.web.id,
+      at: newBundle?.at ?? Date.now(),
+      changed: new Set([...(newBundle?.changed ?? []), ...system.web.changed]),
+    }
   }
 
   const process = system && `${system.process.pid}:${system.process.generation}`

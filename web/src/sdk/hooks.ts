@@ -53,7 +53,7 @@ import type { TranscriptFrame } from './transcript-frame.ts'
 import { subscribeViewport, viewport } from './viewport.ts'
 import type { Viewport } from './viewport.ts'
 
-export { api, bundle, holdReload, switched } from './client.ts'
+export { api, bundle, holdReload, reloadUnlessHeld, switched } from './client.ts'
 /**
  * This page's ui-sdk agent bridge (`snapshot`, `query`), with the `act` the browser tool's `ui` steps use, so a label
  * that exactly names one control acts on it: to run an agent's UI steps on the user's own page.

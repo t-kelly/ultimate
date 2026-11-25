@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest'
 import { expectDistinctAgentNames } from '../../../../test/web/agent-names.ts'
 import { renderSolid } from '../../../../test/web/solid-dom-setup.ts'
-import { act, agent, approval, restart, system, tick } from './status-harness.ts'
+import { act, agent, approval, reload, restart, system, tick } from './status-harness.ts'
 import { Build, CoreStale, Rebuild } from '../../status.solid.tsx'
 
 it('lets an agent read the build details in the tooltip', async () => {
@@ -38,6 +38,15 @@ it('lets an agent restart, check the failure, and retry', async () => {
   await act('Try again', 'press')
   expect(restart.mock.calls).toEqual([['agent'], ['agent']])
   expect(container.textContent).toContain('swapping to gen 4…')
+})
+
+it('lets an agent switch to a new bundle the page is waiting to reload onto', async () => {
+  renderSolid(() => <Rebuild />)
+  system({ web: 'next-build' })
+  await tick()
+  await expectDistinctAgentNames(agent)
+  await act('update ready', 'press')
+  expect(reload).toHaveBeenCalledTimes(1)
 })
 
 it('lets an agent inspect the facets left out of the build', async () => {

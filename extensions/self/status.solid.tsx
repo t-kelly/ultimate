@@ -13,7 +13,16 @@ import { Button } from '@/components/ui/button.solid.tsx'
 import { Popover, PopoverContent } from '@/components/ui/popover.solid.tsx'
 import { StatusPopoverTrigger } from '@/components/ui/status-trigger.solid.tsx'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.solid.tsx'
-import { bundle, cn, formatTime, switched, useNow, useRestart, useSystem } from '@/sdk/solid'
+import {
+  bundle,
+  cn,
+  formatTime,
+  reloadUnlessHeld,
+  switched,
+  useNow,
+  useRestart,
+  useSystem,
+} from '@/sdk/solid'
 import { deadline } from '../../lib/timers.ts'
 import type { Cancel } from '../../lib/timers.ts'
 
@@ -105,12 +114,6 @@ export function Rebuild() {
   const now = useNow(1000, building)
   return (
     <Switch>
-      <Match when={switching(web()?.id)}>
-        <span class="flex items-center gap-1.5 text-brand">
-          <Zap class="size-3" />
-          ready · switching
-        </span>
-      </Match>
       <Match when={building()}>
         <span class="flex items-center gap-1.5 text-muted-foreground">
           <LoaderCircle class="size-3 animate-spin" />
@@ -149,6 +152,17 @@ export function Rebuild() {
             </pre>
           </PopoverContent>
         </Popover>
+      </Match>
+      <Match when={switching(web()?.id)}>
+        <Button
+          class="-mx-1 flex gap-1.5 rounded-sm px-1 font-[family-name:inherit] text-[length:inherit] leading-[inherit] font-normal text-brand hover:bg-accent"
+          onClick={reloadUnlessHeld}
+          size={null}
+          variant={null}
+        >
+          <Zap class="size-3" />
+          update ready
+        </Button>
       </Match>
     </Switch>
   )
